@@ -68,8 +68,9 @@ func TestUpdatePost(t *testing.T) {
 	p.Description = faker.Sentence()
 	p.CategoryID = category.ID
 
-	err := strg.Post().Update(p)
+	post, err := strg.Post().Update(p)
 	require.NoError(t, err)
+	require.NotEmpty(t, post)
 
 	deletePost(p.ID, t)
 }

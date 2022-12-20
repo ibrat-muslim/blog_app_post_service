@@ -68,7 +68,6 @@ func (pr *postRepo) Get(id int64) (*repo.Post, error) {
 			user_id,
 			category_id,
 			created_at,
-			updated_at,
 			views_count
 		FROM posts
 		WHERE id = $1
@@ -125,7 +124,6 @@ func (pr *postRepo) GetAll(params *repo.GetPostsParams) (*repo.GetPostsResult, e
 			user_id,
 			category_id,
 			created_at,
-			updated_at,
 			views_count
 		FROM posts
 		` + filter + orderBy + limit
@@ -147,42 +145,41 @@ func (pr *postRepo) GetAll(params *repo.GetPostsParams) (*repo.GetPostsResult, e
 	return &result, nil
 }
 
-func (pr *postRepo) Update(post *repo.Post) error {
+func (pr *postRepo) Update(post *repo.Post) (*repo.Post, error) {
 	query := `
 		UPDATE posts SET
 			title = $1,
 			description = $2,
 			image_url = $3,
 			category_id = $4,
-			updated_at = $5
-		WHERE id = $6
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $5 AND user_id = $6
+		RETURNING
+			created_at,
+			updated_at,
+			views_count
 	`
 
-	result, err := pr.db.Exec(
+	row := pr.db.QueryRow(
 		query,
 		post.Title,
 		post.Description,
 		post.ImageUrl,
 		post.CategoryID,
-		post.UpdatedAt,
 		post.ID,
+		post.UserID,
 	)
 
+	err := row.Scan(
+		&post.CreatedAt,
+		&post.UpdatedAt,
+		&post.ViewsCount,
+	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	rowsCount, err := result.RowsAffected()
-
-	if err != nil {
-		return err
-	}
-
-	if rowsCount == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil
+	return post, nil
 }
 
 func (pr *postRepo) Delete(id int64) error {
